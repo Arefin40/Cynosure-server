@@ -38,6 +38,7 @@ const verifyToken = (req, res, next) => {
 
    // Collections
    const roomsCollection = await db.collection("rooms");
+   const bookingsCollection = await db.collection("bookings");
    const discountsCollection = await db.collection("discounts");
 
    // ======== TOKEN ========
@@ -135,6 +136,35 @@ const verifyToken = (req, res, next) => {
          _id: new ObjectId(req.params.id),
       });
       res.send(discount);
+   });
+
+   // ======== Bookings ========
+   // book a room
+   app.post("/bookings", verifyToken, async (req, res) => {
+      const tokenEmail = req.user.email;
+
+      if (tokenEmail !== req.body.bookedBy) {
+         return res.status(403).send({ message: "forbidden access" });
+      }
+
+      try {
+         const room = await roomsCollection.findOne({
+            _id: new ObjectId(req.body.roomId),
+         });
+
+         if (room.bookingId !== "nil")
+            return res.status(400).send({ message: "Room is already booked" });
+
+         const result = await bookingsCollection.insertOne(req.body);
+         await roomsCollection.updateOne(
+            { _id: new ObjectId(req.body.roomId) },
+            { $set: { bookingId: result.insertedId } }
+         );
+         res.status(201).send({ message: "Booking successful" });
+      } catch (error) {
+         console.log(error);
+         res.status(500).send({ message: "Failed to book a room" });
+      }
    });
 })();
 

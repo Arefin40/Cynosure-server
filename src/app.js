@@ -38,6 +38,7 @@ const verifyToken = (req, res, next) => {
 
    // Collections
    const roomsCollection = await db.collection("rooms");
+   const discountsCollection = await db.collection("discounts");
 
    // ======== TOKEN ========
    const cookieOptions = {
@@ -78,6 +79,32 @@ const verifyToken = (req, res, next) => {
    app.get("/rooms", async (req, res) => {
       const rooms = await roomsCollection.find(req.query).toArray();
       res.send(rooms);
+   });
+
+   // get single room information
+   app.get("/rooms/:id", async (req, res) => {
+      const token = req.cookies?.token;
+
+      let room = await roomsCollection.findOne({
+         _id: new ObjectId(req.params.id),
+      });
+
+      if (!room) res.send(null);
+
+      // attach offer data if applicable
+      if (room.specialOffer !== "nil") {
+         const discount = await discountsCollection.findOne({
+            _id: new ObjectId(room.specialOffer),
+         });
+         room.specialOffer = discount;
+      }
+
+      room["bookingStatus"] =
+         room.bookingId === "nil" ? "available" : "unavailable";
+
+      delete room.bookingId;
+
+      res.send(room);
    });
 })();
 

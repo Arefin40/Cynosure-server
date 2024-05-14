@@ -166,6 +166,18 @@ const verifyToken = (req, res, next) => {
          res.status(500).send({ message: "Failed to book a room" });
       }
    });
+
+   // get all bookings information
+   app.get("/bookings/:email", verifyToken, async (req, res) => {
+      const tokenEmail = req.user.email;
+
+      if (tokenEmail !== req.params.email) {
+         return res.status(403).send({ message: "forbidden access" });
+      }
+
+      let bookings = await bookingsCollection.find(req.query).toArray();
+      res.send(bookings);
+   });
 })();
 
 module.exports = app;

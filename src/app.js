@@ -106,6 +106,15 @@ const verifyToken = (req, res, next) => {
 
       res.send(room);
    });
+
+   // update room information
+   app.patch("/rooms/:id", async (req, res) => {
+      const result = await roomsCollection.updateOne(
+         { _id: new ObjectId(req.params.id) },
+         { $set: req.body }
+      );
+      res.send({ response: result, updated: req.body });
+   });
 })();
 
 module.exports = app;

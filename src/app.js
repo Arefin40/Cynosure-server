@@ -115,6 +115,27 @@ const verifyToken = (req, res, next) => {
       );
       res.send({ response: result, updated: req.body });
    });
+
+   // ======== Discount ========
+   // add new discount
+   app.post("/discounts", async (req, res) => {
+      const result = await discountsCollection.insertOne(req.body);
+      res.send(result);
+   });
+
+   // get all discounts information
+   app.get("/discounts", async (req, res) => {
+      const discounts = await discountsCollection.find(req.query).toArray();
+      res.send(discounts);
+   });
+
+   // get single discount information
+   app.get("/discounts/:id", async (req, res) => {
+      const discount = await discountsCollection.findOne({
+         _id: new ObjectId(req.params.id),
+      });
+      res.send(discount);
+   });
 })();
 
 module.exports = app;

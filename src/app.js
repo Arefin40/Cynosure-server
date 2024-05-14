@@ -34,6 +34,11 @@ const verifyToken = (req, res, next) => {
 };
 
 (async () => {
+   const db = await connectToDB();
+
+   // Collections
+   const roomsCollection = await db.collection("rooms");
+
    // ======== TOKEN ========
    const cookieOptions = {
       httpOnly: true,
@@ -57,8 +62,22 @@ const verifyToken = (req, res, next) => {
       });
    });
 
+   // ======== Root api ========
    app.get("/", async (req, res) => {
       res.send("Server is running");
+   });
+
+   // ======== Rooms ========
+   // add new room
+   app.post("/rooms", async (req, res) => {
+      const result = await roomsCollection.insertOne(req.body);
+      res.send(result);
+   });
+
+   // get all rooms information
+   app.get("/rooms", async (req, res) => {
+      const rooms = await roomsCollection.find(req.query).toArray();
+      res.send(rooms);
    });
 })();
 

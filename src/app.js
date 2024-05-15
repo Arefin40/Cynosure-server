@@ -1,4 +1,5 @@
 const express = require("express");
+const moment = require("moment");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
@@ -252,17 +253,20 @@ const verifyToken = (req, res, next) => {
             return res.status(403).send({ message: "forbidden access" });
          }
 
-         await bookingsCollection.deleteOne({
-            _id: new ObjectId(req.params.id),
-         });
-
-         // make the room available for booking
-         await roomsCollection.updateOne(
-            { _id: new ObjectId(booking.roomId) },
-            { $set: { bookingId: "nil" } }
-         );
-
-         res.status(200).send({ message: "Booking cancellation successful" });
+         const oneDayBeforeToday = moment().subtract(-1, "day");
+         if (oneDayBeforeToday.isBefore(moment(booking.checkInDate))) {
+            await bookingsCollection.deleteOne({
+               _id: new ObjectId(req.params.id),
+            });
+            // make the room available for booking
+            await roomsCollection.updateOne(
+               { _id: new ObjectId(booking.roomId) },
+               { $set: { bookingId: "nil" } }
+            );
+            res.status(200).send({ message: "Booking cancellation successful" });
+         } else {
+            res.status(400).send({ message: "Cancellation deadline has passed" });
+         }
       } catch (error) {
          console.log(error);
          res.status(500).send({ message: "Failed to cancel the booking" });

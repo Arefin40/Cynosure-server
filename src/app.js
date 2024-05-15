@@ -100,8 +100,7 @@ const verifyToken = (req, res, next) => {
          room.specialOffer = discount;
       }
 
-      room["bookingStatus"] =
-         room.bookingId === "nil" ? "available" : "unavailable";
+      room["bookingStatus"] = room.bookingId === "nil" ? "available" : "unavailable";
 
       delete room.bookingId;
 
@@ -178,6 +177,32 @@ const verifyToken = (req, res, next) => {
       let bookings = await bookingsCollection.find(req.query).toArray();
       res.send(bookings);
    });
+
+   // update booking dates
+   app.patch("/booking/:id", verifyToken, async (req, res) => {
+      try {
+         const booking = await bookingsCollection.findOne({
+            _id: new ObjectId(req.params.id),
+         });
+
+         // Before updating, first check if the booking is bookedBy this user
+         const tokenEmail = req.user.email;
+         if (tokenEmail !== booking.bookedBy) {
+            return res.status(403).send({ message: "forbidden access" });
+         }
+
+         await bookingsCollection.updateOne(
+            { _id: new ObjectId(req.params.id) },
+            { $set: req.body }
+         );
+
+         res.status(200).send({ message: "Booking dates updated successfully" });
+      } catch (error) {
+         console.log(error);
+         res.status(500).send({ message: "Failed to update the booking dates" });
+      }
+   });
+
 })();
 
 module.exports = app;

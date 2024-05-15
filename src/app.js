@@ -39,6 +39,7 @@ const verifyToken = (req, res, next) => {
    // Collections
    const roomsCollection = await db.collection("rooms");
    const bookingsCollection = await db.collection("bookings");
+   const reviewsCollection = await db.collection("reviews");
    const discountsCollection = await db.collection("discounts");
 
    // ======== TOKEN ========
@@ -230,6 +231,48 @@ const verifyToken = (req, res, next) => {
       } catch (error) {
          console.log(error);
          res.status(500).send({ message: "Failed to cancel the booking" });
+      }
+   });
+
+   // ======== Reviews ========
+   // post a review
+   app.post("/reviews", verifyToken, async (req, res) => {
+      const tokenEmail = req.user.email;
+
+      if (tokenEmail !== req.body.userId) {
+         return res.status(403).send({ message: "forbidden access" });
+      }
+
+      try {
+         // check if a review has already been posted for this booking
+         const alreadyPosted = await reviewsCollection.findOne({
+            bookingId: req.body.bookingId,
+         });
+         if (alreadyPosted) {
+            return res.status(400).send({ message: "You've already reviewed this booking." });
+         }
+
+         await reviewsCollection.insertOne({
+            ...req.body,
+            timestamp: new Date(),
+         });
+
+         // update review count and rating of that room
+         const room = await roomsCollection.findOne({
+            _id: new ObjectId(req.body.roomId),
+         });
+         const newRating =
+            (room.rating * room.totalReviews + req.body.rating) / (room.totalReviews + 1);
+
+         await roomsCollection.updateOne(
+            { _id: new ObjectId(req.body.roomId) },
+            { $inc: { totalReviews: 1 }, $set: { rating: parseFloat(newRating.toFixed(2)) } }
+         );
+
+         res.status(201).send({ message: "Review posted successfully" });
+      } catch (error) {
+         console.log(error);
+         res.status(500).send({ message: "Failed to post review" });
       }
    });
 })();

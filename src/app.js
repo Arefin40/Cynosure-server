@@ -37,6 +37,7 @@ const verifyToken = (req, res, next) => {
    const db = await connectToDB();
 
    // Collections
+   const Cynosure = await db.collection("Cynosure");
    const roomsCollection = await db.collection("rooms");
    const bookingsCollection = await db.collection("bookings");
    const reviewsCollection = await db.collection("reviews");
@@ -67,7 +68,27 @@ const verifyToken = (req, res, next) => {
 
    // ======== Root api ========
    app.get("/", async (req, res) => {
-      res.send("Server is running");
+      const root = (await Cynosure.find().toArray()).at(0);
+      // Special offer
+      const specialOffer = await discountsCollection.findOne({
+         _id: new ObjectId("6641d4120ffebc6f46e5a92c"),
+      });
+
+      // Featured rooms
+      const featuredRooms = await roomsCollection
+         .find({ _id: { $in: root.featuredRooms } })
+         .project({ roomType: 1, price: 1, images: 1, size: 1 })
+         .toArray();
+
+      // Latest reviews
+      const latestReviews = await reviewsCollection
+         .find()
+         .project({ "user.name": 1, "user.image": 1, timestamp: 1, comment: 1, rating: 1, _id: 0 })
+         .sort({ timestamp: -1 })
+         .limit(5)
+         .toArray();
+
+      res.status(200).send({ specialOffer, featuredRooms, reviews: latestReviews });
    });
 
    // ======== Rooms ========
@@ -189,7 +210,7 @@ const verifyToken = (req, res, next) => {
          return res.status(403).send({ message: "forbidden access" });
       }
 
-      let bookings = await bookingsCollection.find(req.query).toArray();
+      let bookings = await bookingsCollection.find({ bookedBy: req.params.email }).toArray();
       res.send(bookings);
    });
 
@@ -253,7 +274,7 @@ const verifyToken = (req, res, next) => {
    app.post("/reviews", verifyToken, async (req, res) => {
       const tokenEmail = req.user.email;
 
-      if (tokenEmail !== req.body.userId) {
+      if (tokenEmail !== req.body.user.email) {
          return res.status(403).send({ message: "forbidden access" });
       }
 
@@ -294,7 +315,7 @@ const verifyToken = (req, res, next) => {
    app.get("/reviews", async (req, res) => {
       const reviews = await reviewsCollection
          .find()
-         .project({ "user.name": 1, "user.image": 1, timestamp: 1, comment: 1 })
+         .project({ "user.name": 1, "user.image": 1, rating: 1, timestamp: 1, comment: 1 })
          .sort({ timestamp: -1 })
          .toArray();
       res.status(200).send(reviews);
@@ -304,6 +325,7 @@ const verifyToken = (req, res, next) => {
    app.get("/reviews/:roomId", async (req, res) => {
       const reviews = await reviewsCollection
          .find({ roomId: req.params.roomId })
+         .project({ "user.name": 1, "user.image": 1, rating: 1, timestamp: 1, comment: 1 })
          .sort({ timestamp: -1 })
          .toArray();
       res.status(200).send(reviews);

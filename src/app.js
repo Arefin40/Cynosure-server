@@ -79,8 +79,22 @@ const verifyToken = (req, res, next) => {
 
    // get all rooms information
    app.get("/rooms", async (req, res) => {
-      const rooms = await roomsCollection.find(req.query).toArray();
-      res.send(rooms);
+      let filter = {};
+
+      try {
+         if ("minPrice" in req.query && "maxPrice" in req.query) {
+            filter = {
+               price: { $gte: parseInt(req.query.minPrice), $lte: parseInt(req.query.maxPrice) },
+            };
+         }
+
+         const rooms = await roomsCollection.find(filter).toArray();
+
+         res.status(200).send(rooms);
+      } catch (error) {
+         console.error(error);
+         res.status(500);
+      }
    });
 
    // get single room information

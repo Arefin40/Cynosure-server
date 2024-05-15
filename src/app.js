@@ -203,6 +203,35 @@ const verifyToken = (req, res, next) => {
       }
    });
 
+   // cancel a booking
+   app.delete("/bookings/:id", verifyToken, async (req, res) => {
+      try {
+         const booking = await bookingsCollection.findOne({
+            _id: new ObjectId(req.params.id),
+         });
+
+         // Before cancellation, first check if the booking is bookedBy this user
+         const tokenEmail = req.user.email;
+         if (tokenEmail !== booking.bookedBy) {
+            return res.status(403).send({ message: "forbidden access" });
+         }
+
+         await bookingsCollection.deleteOne({
+            _id: new ObjectId(req.params.id),
+         });
+
+         // make the room available for booking
+         await roomsCollection.updateOne(
+            { _id: new ObjectId(booking.roomId) },
+            { $set: { bookingId: "nil" } }
+         );
+
+         res.status(200).send({ message: "Booking cancellation successful" });
+      } catch (error) {
+         console.log(error);
+         res.status(500).send({ message: "Failed to cancel the booking" });
+      }
+   });
 })();
 
 module.exports = app;

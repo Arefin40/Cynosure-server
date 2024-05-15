@@ -289,6 +289,25 @@ const verifyToken = (req, res, next) => {
          res.status(500).send({ message: "Failed to post review" });
       }
    });
+
+   // get all reviews
+   app.get("/reviews", async (req, res) => {
+      const reviews = await reviewsCollection
+         .find()
+         .project({ "user.name": 1, "user.image": 1, timestamp: 1, comment: 1 })
+         .sort({ timestamp: -1 })
+         .toArray();
+      res.status(200).send(reviews);
+   });
+
+   // get all reviews of a room
+   app.get("/reviews/:roomId", async (req, res) => {
+      const reviews = await reviewsCollection
+         .find({ roomId: req.params.roomId })
+         .sort({ timestamp: -1 })
+         .toArray();
+      res.status(200).send(reviews);
+   });
 })();
 
 module.exports = app;
